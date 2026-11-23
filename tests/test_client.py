@@ -45,18 +45,18 @@ async def test_the_key_is_sent_as_a_bearer_header(api: FakeApi, client: OsmundCl
     assert request.headers["User-Agent"].startswith("python-osmund/")
 
 
-async def test_locations_keep_both_and_say_which_has_access(api: FakeApi, client: OsmundClient) -> None:
+async def test_locations_keep_both_with_their_api_access(api: FakeApi, client: OsmundClient) -> None:
     api.get(LOCATIONS, payload=fixture("locations"))
 
     locations = await client.locations()
 
-    assert [(loc.id, loc.has_access) for loc in locations] == [(OPEN_ID, True), (CLOSED_ID, False)]
+    assert [(loc.id, loc.api_access) for loc in locations] == [(OPEN_ID, "open"), (CLOSED_ID, "closed")]
     assert locations[0].label == "Hjem"
     assert locations[0].meter_resolution == "PT1H"
 
 
 async def test_fields_and_values_it_does_not_know_are_ignored(api: FakeApi, client: OsmundClient) -> None:
-    """The API is in beta and adds fields and values: none of them may break a caller."""
+    """The API adds fields and values: none of them may break a caller."""
     answer = fixture("locations")
     answer["locations"][0]["somethingNew"] = {"nested": True}
     answer["locations"][0]["state"] = "a_state_from_the_future"
@@ -107,14 +107,16 @@ async def test_consumption_by_the_hour_from_and_to(api: FakeApi, client: OsmundC
     assert request.path_qs.endswith("/consumption?resolution=PT1H&from=2026-11-01&to=2026-11-03")
 
 
-async def test_standby_months_oldest_first(api: FakeApi, client: OsmundClient) -> None:
+async def test_standby_months_in_the_apis_order(api: FakeApi, client: OsmundClient) -> None:
     answer = fixture("standby")
     answer["months"].reverse()
     api.get(f"{LOCATIONS}/{OPEN_ID}/standby", payload=answer)
 
     months = await client.standby(OPEN_ID)
 
-    assert [m.month for m in months] == sorted(m["month"] for m in answer["months"])
+    assert [(m.month, m.standby_kw) for m in months] == [
+        (m["month"], m["standbyKw"]) for m in answer["months"]
+    ]
 
 
 async def test_a_rated_month_with_each_day(api: FakeApi, client: OsmundClient) -> None:
@@ -127,7 +129,7 @@ async def test_a_rated_month_with_each_day(api: FakeApi, client: OsmundClient) -
     assert not rated.complete
     assert rated.days_with_data == answer["daysWithData"]
     assert rated.total_with_subscriptions.inc_vat == answer["totalWithSubscriptions"]["incVat"]
-    assert [d.per_kwh.inc_vat for d in rated.days] == [d["incVat"] for d in answer["days"]]
+    assert [(d.ex_vat, d.inc_vat) for d in rated.days] == [(d["exVat"], d["incVat"]) for d in answer["days"]]
 
 
 async def test_invoices_and_one_invoice_with_its_lines(api: FakeApi, client: OsmundClient) -> None:
@@ -136,9 +138,9 @@ async def test_invoices_and_one_invoice_with_its_lines(api: FakeApi, client: Osm
     api.get(f"{INVOICES}/{detail['invoiceNo']}", payload=detail)
 
     invoices = await client.invoices()
-    invoice = await client.invoice(invoices[0].number)
+    invoice = await client.invoice(invoices[0].invoice_no)
 
-    assert invoices[0].number == detail["invoiceNo"]
+    assert invoices[0].invoice_no == detail["invoiceNo"]
     assert invoice.total.inc_vat == detail["total"]["incVat"]
     assert [line.description for line in invoice.lines] == [line["description"] for line in detail["lines"]]
 
@@ -222,3 +224,28 @@ async def test_the_network_failing_is_a_connection_error() -> None:
 
         with pytest.raises(OsmundConnectionError):
             await unreachable.me()
+
+
+async def test_a_value_the_answer_leaves_out_is_none(api: FakeApi, client: OsmundClient) -> None:
+    """A missing amount is not zero: the library does not guess."""
+    answer = fixture("invoices")
+    for field in ("total", "outstanding", "paid", "type"):
+        answer["invoices"][0].pop(field)
+    api.get(INVOICES, payload=answer)
+
+    [invoice, *_] = await client.invoices()
+
+    assert (invoice.total, invoice.outstanding, invoice.paid, invoice.type) == (None, None, None, None)
+
+
+async def test_the_caller_chooses_the_page_and_the_resolution(api: FakeApi, client: OsmundClient) -> None:
+    api.get(INVOICES, payload=fixture("invoices"))
+    api.get(f"{LOCATIONS}/{OPEN_ID}/consumption", payload=fixture("consumption"))
+
+    await client.invoices(page=2, per_page=10)
+    await client.consumption(OPEN_ID, date(2026, 11, 1), date(2026, 11, 3), resolution="P1D")
+
+    assert [r.path_qs for r in api.requests] == [
+        "/api/v1/invoices?page=2&perPage=10",
+        f"/api/v1/locations/{OPEN_ID}/consumption?resolution=P1D&from=2026-11-01&to=2026-11-03",
+    ]

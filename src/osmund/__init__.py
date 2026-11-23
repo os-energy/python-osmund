@@ -1,7 +1,15 @@
 """An async client for the Osmund API: https://osmundenergi.dk/docs/osmund-api/."""
 
 from .client import (
+    API_ACCESS_OPEN,
     API_BASE,
+    KEY_PREFIX,
+    RESOLUTION_HOUR,
+    RESOLUTION_QUARTER_HOUR,
+    SCOPE_CONSUMPTION,
+    SCOPE_COSTS,
+    SCOPE_LABELS,
+    SCOPE_PRICES,
     Amount,
     ApiKey,
     Invoice,
@@ -25,7 +33,15 @@ from .client import (
 )
 
 __all__ = [
+    "API_ACCESS_OPEN",
     "API_BASE",
+    "KEY_PREFIX",
+    "RESOLUTION_HOUR",
+    "RESOLUTION_QUARTER_HOUR",
+    "SCOPE_CONSUMPTION",
+    "SCOPE_COSTS",
+    "SCOPE_LABELS",
+    "SCOPE_PRICES",
     "Amount",
     "ApiKey",
     "Invoice",

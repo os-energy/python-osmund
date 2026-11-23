@@ -1,7 +1,9 @@
 """An async client for the Osmund API: https://osmundenergi.dk/docs/osmund-api/.
 
-It only reads, ignores fields and values it does not know (the API is in beta
-and adds them), and branches on the error `code`, never on the message.
+It only reads, and it represents the API's answers as they are: the fields keep
+the API's names (in snake_case), a value the answer leaves out is None, and
+fields and values it does not know are ignored, since the API adds them. It
+branches on the error `code`, never on the message.
 """
 
 from __future__ import annotations
@@ -16,6 +18,19 @@ import aiohttp
 API_BASE = "https://api.osmundenergi.dk"
 # When nothing says how long to wait after a 429 or 503.
 DEFAULT_RETRY_AFTER = 60
+
+# Every personal key starts with this.
+KEY_PREFIX = "osm_"
+# The scopes a key can have.
+SCOPE_PRICES = "prices:read"
+SCOPE_CONSUMPTION = "consumption:read"
+SCOPE_COSTS = "costs:read"
+SCOPE_LABELS = "labels:read"
+# Location.api_access when the API answers for the location.
+API_ACCESS_OPEN = "open"
+# The resolutions of prices and consumption.
+RESOLUTION_HOUR = "PT1H"
+RESOLUTION_QUARTER_HOUR = "PT15M"
 
 TIMEOUT = aiohttp.ClientTimeout(total=30)
 USER_AGENT = f"python-osmund/{version('osmund')}"
@@ -80,8 +95,9 @@ class Location:
 
     id: str
     label: str | None
-    state: str
-    api_access: str
+    state: str | None
+    # "open" when the API answers for this location.
+    api_access: str | None
     price_area: str | None
     meter_resolution: str | None
     # When the latest meter reading ends; it moves when there is new consumption.
@@ -89,15 +105,10 @@ class Location:
     # The latest day that is rated; it moves when there is a new cost.
     rated_through: date | None = None
 
-    @property
-    def has_access(self) -> bool:
-        """Whether the API answers for this location."""
-        return self.api_access == "open"
-
 
 @dataclass(frozen=True, slots=True)
 class PriceInterval:
-    """One hour or quarter hour of a price day, in kr/kWh."""
+    """One interval of a price day, in DKK/kWh."""
 
     start: datetime
     end: datetime
@@ -108,11 +119,11 @@ class PriceInterval:
 
 @dataclass(frozen=True, slots=True)
 class PriceDay:
-    """The prices of one Danish day at one location."""
+    """The prices of one Danish day at one location; `day` is the answer's `date`."""
 
     day: date
-    resolution: str
-    complete: bool
+    resolution: str | None
+    complete: bool | None
     reason: str | None
     intervals: tuple[PriceInterval, ...]
 
@@ -126,29 +137,30 @@ class PriceDay:
 
 @dataclass(frozen=True, slots=True)
 class Reading:
-    """kWh used from `start` to `end`."""
+    """One value of GET .../consumption: kWh used from `start` to `end`."""
 
     start: datetime
     end: datetime
-    kwh: float
+    kwh: float | None
 
 
 @dataclass(frozen=True, slots=True)
 class Amount:
-    """An amount in kroner, without and with VAT."""
+    """An amount in DKK, without and with VAT."""
 
-    ex_vat: float
-    inc_vat: float
+    ex_vat: float | None
+    inc_vat: float | None
 
 
 @dataclass(frozen=True, slots=True)
 class RatedDay:
-    """What one day cost: the charges per kWh, and with the subscriptions."""
+    """One day of GET .../costs/rated; `day` is the answer's `date`."""
 
     day: date
-    kwh: float
-    per_kwh: Amount
-    with_subscriptions: Amount
+    kwh: float | None
+    ex_vat: float | None
+    inc_vat: float | None
+    total_with_subscriptions: Amount | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,30 +169,31 @@ class RatedMonth:
 
     month: str
     days: tuple[RatedDay, ...]
-    total_kwh: float
-    total: Amount
-    total_with_subscriptions: Amount
-    complete: bool
-    days_with_data: int
-    days_in_month: int
+    total_kwh: float | None
+    total: Amount | None
+    total_with_subscriptions: Amount | None
+    complete: bool | None
+    days_with_data: int | None
+    days_in_month: int | None
 
 
 @dataclass(frozen=True, slots=True)
 class StandbyMonth:
-    """What the location draws when nothing is switched on, in kW."""
+    """One month of GET .../standby: what the location draws when nothing is switched on."""
 
     month: str
-    kw: float
+    standby_kw: float | None
 
 
 @dataclass(frozen=True, slots=True)
 class InvoiceLine:
     """One line as on the invoice."""
 
-    description: str
-    quantity: float
-    unit: str
-    inc_vat: float
+    description: str | None
+    quantity: float | None
+    unit: str | None
+    ex_vat: float | None
+    inc_vat: float | None
     period_start: date | None
     period_end: date | None
 
@@ -189,13 +202,13 @@ class InvoiceLine:
 class Invoice:
     """One invoice or credit note."""
 
-    number: str
-    type: str
+    invoice_no: str
+    type: str | None
     invoice_date: date | None
     due_date: date | None
-    total: Amount
-    outstanding: float
-    paid: bool
+    total: Amount | None
+    outstanding: float | None
+    paid: bool | None
     lines: tuple[InvoiceLine, ...] = ()
 
 
@@ -209,21 +222,42 @@ def _day(value: Any) -> date | None:
     return date.fromisoformat(value) if isinstance(value, str) else None
 
 
-def _amount(value: Any) -> Amount:
-    """An amount object; a missing one is zero."""
-    value = value if isinstance(value, dict) else {}
-    return Amount(ex_vat=float(value.get("exVat") or 0), inc_vat=float(value.get("incVat") or 0))
+def _float(value: Any) -> float | None:
+    """A number, or None when the answer leaves it out."""
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def _int(value: Any) -> int | None:
+    """A whole number, or None when the answer leaves it out."""
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _bool(value: Any) -> bool | None:
+    """A boolean, or None when the answer leaves it out."""
+    return value if isinstance(value, bool) else None
+
+
+def _str(value: Any) -> str | None:
+    """A string, or None when the answer leaves it out."""
+    return value if isinstance(value, str) else None
+
+
+def _amount(value: Any) -> Amount | None:
+    """An amount object, or None when the answer leaves it out."""
+    if not isinstance(value, dict):
+        return None
+    return Amount(ex_vat=_float(value.get("exVat")), inc_vat=_float(value.get("incVat")))
 
 
 def _invoice(row: dict[str, Any], lines: tuple[InvoiceLine, ...] = ()) -> Invoice:
     return Invoice(
-        number=str(row["invoiceNo"]),
-        type=str(row.get("type", "")),
+        invoice_no=str(row["invoiceNo"]),
+        type=_str(row.get("type")),
         invoice_date=_day(row.get("invoiceDate")),
         due_date=_day(row.get("dueDate")),
         total=_amount(row.get("total")),
-        outstanding=float(row.get("outstanding") or 0),
-        paid=bool(row.get("paid", False)),
+        outstanding=_float(row.get("outstanding")),
+        paid=_bool(row.get("paid")),
         lines=lines,
     )
 
@@ -282,11 +316,11 @@ class OsmundClient:
         return [
             Location(
                 id=str(row["id"]),
-                label=row.get("label") or None,
-                state=str(row.get("state", "")),
-                api_access=str(row.get("apiAccess", "")),
-                price_area=row.get("priceArea"),
-                meter_resolution=row.get("meterResolution"),
+                label=_str(row.get("label")),
+                state=_str(row.get("state")),
+                api_access=_str(row.get("apiAccess")),
+                price_area=_str(row.get("priceArea")),
+                meter_resolution=_str(row.get("meterResolution")),
                 consumption_through=_when(row.get("consumptionThrough")),
                 rated_through=_day(row.get("ratedThrough")),
             )
@@ -295,49 +329,51 @@ class OsmundClient:
         ]
 
     async def prices(self, location_id: str, day: date, resolution: str) -> PriceDay:
-        """GET /api/v1/locations/{id}/prices for today or tomorrow."""
+        """GET /api/v1/locations/{id}/prices for one day, PT1H or PT15M."""
         body = await self._get(
             f"/api/v1/locations/{location_id}/prices",
             {"date": day.isoformat(), "resolution": resolution},
         )
-        intervals = tuple(
-            PriceInterval(
-                start=datetime.fromisoformat(row["start"]),
-                end=datetime.fromisoformat(row["end"]),
-                total_inc_vat=float(row["totalIncVat"]),
-                total_ex_vat=float(row["totalExVat"]),
-                spot=float(row["spot"]),
-            )
-            for row in body.get("intervals") or []
-        )
         return PriceDay(
-            day=date.fromisoformat(body.get("date", day.isoformat())),
-            resolution=str(body.get("resolution", resolution)),
-            complete=bool(body.get("complete", False)),
-            reason=body.get("reason"),
-            intervals=intervals,
+            day=_day(body.get("date")) or day,
+            resolution=_str(body.get("resolution")),
+            complete=_bool(body.get("complete")),
+            reason=_str(body.get("reason")),
+            intervals=tuple(
+                PriceInterval(
+                    start=datetime.fromisoformat(row["start"]),
+                    end=datetime.fromisoformat(row["end"]),
+                    total_inc_vat=float(row["totalIncVat"]),
+                    total_ex_vat=float(row["totalExVat"]),
+                    spot=float(row["spot"]),
+                )
+                for row in body.get("intervals") or []
+            ),
         )
 
-    async def consumption(self, location_id: str, first: date, last: date) -> list[Reading]:
-        """GET .../consumption by the hour, `first` to `last` included: at most 31 days."""
+    async def consumption(
+        self, location_id: str, first: date, last: date, resolution: str = RESOLUTION_HOUR
+    ) -> list[Reading]:
+        """GET .../consumption from `first` to `last`, both included."""
         body = await self._get(
             f"/api/v1/locations/{location_id}/consumption",
-            {"resolution": "PT1H", "from": first.isoformat(), "to": last.isoformat()},
+            {"resolution": resolution, "from": first.isoformat(), "to": last.isoformat()},
         )
         return [
             Reading(
                 start=datetime.fromisoformat(row["start"]),
                 end=datetime.fromisoformat(row["end"]),
-                kwh=float(row["kwh"]),
+                kwh=_float(row.get("kwh")),
             )
             for row in body.get("values") or []
         ]
 
     async def standby(self, location_id: str) -> list[StandbyMonth]:
-        """GET .../standby: completed months, oldest first."""
+        """GET .../standby: the completed months, in the API's order."""
         rows = (await self._get(f"/api/v1/locations/{location_id}/standby")).get("months") or []
-        months = [StandbyMonth(month=str(row["month"]), kw=float(row["standbyKw"])) for row in rows]
-        return sorted(months, key=lambda m: m.month)
+        return [
+            StandbyMonth(month=str(row["month"]), standby_kw=_float(row.get("standbyKw"))) for row in rows
+        ]
 
     async def rated_cost(self, location_id: str, month: str) -> RatedMonth:
         """GET .../costs/rated for one month, YYYY-MM."""
@@ -347,38 +383,37 @@ class OsmundClient:
             days=tuple(
                 RatedDay(
                     day=date.fromisoformat(row["date"]),
-                    kwh=float(row.get("kwh") or 0),
-                    per_kwh=Amount(
-                        ex_vat=float(row.get("exVat") or 0), inc_vat=float(row.get("incVat") or 0)
-                    ),
-                    with_subscriptions=_amount(row.get("totalWithSubscriptions")),
+                    kwh=_float(row.get("kwh")),
+                    ex_vat=_float(row.get("exVat")),
+                    inc_vat=_float(row.get("incVat")),
+                    total_with_subscriptions=_amount(row.get("totalWithSubscriptions")),
                 )
                 for row in body.get("days") or []
             ),
-            total_kwh=float(body.get("totalKwh") or 0),
+            total_kwh=_float(body.get("totalKwh")),
             total=_amount(body.get("total")),
             total_with_subscriptions=_amount(body.get("totalWithSubscriptions")),
-            complete=bool(body.get("complete", False)),
-            days_with_data=int(body.get("daysWithData") or 0),
-            days_in_month=int(body.get("daysInMonth") or 0),
+            complete=_bool(body.get("complete")),
+            days_with_data=_int(body.get("daysWithData")),
+            days_in_month=_int(body.get("daysInMonth")),
         )
 
-    async def invoices(self, per_page: int = 25) -> list[Invoice]:
-        """GET /api/v1/invoices: the first page, newest first."""
-        rows = (await self._get("/api/v1/invoices", {"page": "1", "perPage": str(per_page)})).get(
-            "invoices"
-        ) or []
+    async def invoices(self, page: int = 1, per_page: int = 25) -> list[Invoice]:
+        """GET /api/v1/invoices: one page, newest first."""
+        body = await self._get("/api/v1/invoices", {"page": str(page), "perPage": str(per_page)})
+        rows = body.get("invoices") or []
         return [_invoice(row) for row in rows if isinstance(row, dict) and row.get("invoiceNo")]
 
-    async def invoice(self, number: str) -> Invoice:
+    async def invoice(self, invoice_no: str) -> Invoice:
         """GET /api/v1/invoices/{invoiceNo}, with its lines."""
-        body = await self._get(f"/api/v1/invoices/{number}")
+        body = await self._get(f"/api/v1/invoices/{invoice_no}")
         lines = tuple(
             InvoiceLine(
-                description=str(row.get("description", "")),
-                quantity=float(row.get("quantity") or 0),
-                unit=str(row.get("unit", "")),
-                inc_vat=float(row.get("incVat") or 0),
+                description=_str(row.get("description")),
+                quantity=_float(row.get("quantity")),
+                unit=_str(row.get("unit")),
+                ex_vat=_float(row.get("exVat")),
+                inc_vat=_float(row.get("incVat")),
                 period_start=_day(row.get("periodStart")),
                 period_end=_day(row.get("periodEnd")),
             )
