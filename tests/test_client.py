@@ -35,11 +35,11 @@ from .conftest import (
 async def test_the_key_is_sent_as_a_bearer_header(api: FakeApi, client: OsmundClient) -> None:
     api.get(ME, payload=fixture("me"))
 
-    key = await client.me()
+    me = await client.me()
 
-    assert key.prefix == "osm_4f9Kx2Qa"
-    assert "prices:read" in key.scopes
-    assert key.expires_at == datetime(2027, 11, 16, 9, 12, tzinfo=CPH)
+    assert me.key.prefix == "osm_4f9Kx2Qa"
+    assert "prices:read" in me.key.scopes
+    assert me.key.expires_at == datetime(2027, 11, 16, 9, 12, tzinfo=CPH)
     [request] = api.requests
     assert request.headers["Authorization"] == f"Bearer {KEY}"
     assert request.headers["User-Agent"].startswith("python-osmund/")
@@ -249,3 +249,22 @@ async def test_the_caller_chooses_the_page_and_the_resolution(api: FakeApi, clie
         "/api/v1/invoices?page=2&perPage=10",
         f"/api/v1/locations/{OPEN_ID}/consumption?resolution=P1D&from=2026-11-01&to=2026-11-03",
     ]
+
+
+async def test_the_account_the_key_belongs_to(api: FakeApi, client: OsmundClient) -> None:
+    """Every key of an account has the same account id."""
+    api.get(ME, payload=fixture("me") | {"account": {"id": "94d922d1-fcc9-5571-b97c-e7e7d1aca4c7"}})
+
+    me = await client.me()
+
+    assert me.account is not None
+    assert me.account.id == "94d922d1-fcc9-5571-b97c-e7e7d1aca4c7"
+
+
+async def test_an_api_without_the_account_gives_none(api: FakeApi, client: OsmundClient) -> None:
+    """An API from before the account id answers without it."""
+    answer = fixture("me")
+    answer.pop("account", None)
+    api.get(ME, payload=answer)
+
+    assert (await client.me()).account is None

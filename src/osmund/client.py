@@ -90,6 +90,25 @@ class ApiKey:
 
 
 @dataclass(frozen=True, slots=True)
+class Account:
+    """The account the key belongs to, from GET /api/v1/me.
+
+    Its id is the same for every key of the account and never changes, so a
+    caller can tell that a new key belongs to the same account.
+    """
+
+    id: str
+
+
+@dataclass(frozen=True, slots=True)
+class Me:
+    """GET /api/v1/me: the key, and the account it belongs to (None from an API that does not send it)."""
+
+    key: ApiKey
+    account: Account | None
+
+
+@dataclass(frozen=True, slots=True)
 class Location:
     """One location, from GET /api/v1/locations."""
 
@@ -300,14 +319,20 @@ class OsmundClient:
         except (aiohttp.ClientError, TimeoutError) as err:
             raise OsmundConnectionError(f"Could not reach the Osmund API: {err}") from err
 
-    async def me(self) -> ApiKey:
+    async def me(self) -> Me:
         """GET /api/v1/me."""
-        key = (await self._get("/api/v1/me")).get("key") or {}
-        return ApiKey(
-            name=str(key.get("name", "")),
-            prefix=str(key.get("prefix", "")),
-            scopes=frozenset(s for s in key.get("scopes") or [] if isinstance(s, str)),
-            expires_at=_when(key.get("expiresAt")),
+        body = await self._get("/api/v1/me")
+        key = body.get("key") or {}
+        account = body.get("account")
+        account_id = _str(account.get("id")) if isinstance(account, dict) else None
+        return Me(
+            key=ApiKey(
+                name=str(key.get("name", "")),
+                prefix=str(key.get("prefix", "")),
+                scopes=frozenset(s for s in key.get("scopes") or [] if isinstance(s, str)),
+                expires_at=_when(key.get("expiresAt")),
+            ),
+            account=Account(id=account_id) if account_id else None,
         )
 
     async def locations(self) -> list[Location]:
