@@ -1,0 +1,14 @@
+{
+  "locationId": "0192f3a1-7c2e-7b1a-9d3e-2f6a8c1e4b10",
+  "months": [
+    {
+      "month": "2026-09",
+      "standbyKw": 0.142
+    },
+    {
+      "month": "2026-10",
+      "standbyKw": 0.151
+    }
+  ],
+  "unit": "kW"
+}

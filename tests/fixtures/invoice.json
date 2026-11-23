@@ -1,0 +1,35 @@
+{
+  "currency": "DKK",
+  "dueDate": "2026-11-26",
+  "invoiceDate": "2026-11-12",
+  "invoiceNo": "F1234",
+  "lines": [
+    {
+      "description": "Strøm",
+      "exVat": 181.1,
+      "incVat": 226.38,
+      "periodEnd": "2026-10-31",
+      "periodStart": "2026-10-01",
+      "quantity": 441.7,
+      "unit": "kWh",
+      "vat": 45.28
+    },
+    {
+      "description": "Osmund Plus",
+      "exVat": 13,
+      "incVat": 16.25,
+      "periodEnd": "2026-10-31",
+      "periodStart": "2026-10-01",
+      "quantity": 31,
+      "unit": "day",
+      "vat": 3.25
+    }
+  ],
+  "outstanding": 0,
+  "paid": true,
+  "total": {
+    "exVat": 662.38,
+    "incVat": 827.98
+  },
+  "type": "invoice"
+}

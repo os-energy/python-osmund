@@ -1,0 +1,36 @@
+{
+  "locations": [
+    {
+      "apiAccess": "open",
+      "consumptionThrough": "2026-11-16T00:00:00+01:00",
+      "id": "0192f3a1-7c2e-7b1a-9d3e-2f6a8c1e4b10",
+      "label": "Hjem",
+      "meterResolution": "PT1H",
+      "plan": "osmund_rolig",
+      "plus": {
+        "endsOn": null,
+        "status": "included",
+        "trialEndsOn": null
+      },
+      "priceArea": "DK1",
+      "ratedThrough": "2026-11-15",
+      "state": "active"
+    },
+    {
+      "apiAccess": "closed",
+      "consumptionThrough": null,
+      "id": "0192f3a1-9a41-7d02-8c11-5b7e3d2f6a22",
+      "label": "Sommerhuset",
+      "meterResolution": null,
+      "plan": null,
+      "plus": {
+        "endsOn": null,
+        "status": "none",
+        "trialEndsOn": null
+      },
+      "priceArea": "DK2",
+      "ratedThrough": null,
+      "state": "upcoming"
+    }
+  ]
+}

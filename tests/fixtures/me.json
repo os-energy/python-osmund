@@ -1,0 +1,13 @@
+{
+  "key": {
+    "expiresAt": "2027-11-16T09:12:00+01:00",
+    "name": "Mit script",
+    "prefix": "osm_4f9Kx2Qa",
+    "scopes": [
+      "prices:read",
+      "consumption:read",
+      "costs:read",
+      "labels:read"
+    ]
+  }
+}

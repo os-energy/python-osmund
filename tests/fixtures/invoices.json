@@ -1,0 +1,20 @@
+{
+  "hasMore": false,
+  "invoices": [
+    {
+      "currency": "DKK",
+      "dueDate": "2026-11-26",
+      "invoiceDate": "2026-11-12",
+      "invoiceNo": "F1234",
+      "outstanding": 0,
+      "paid": true,
+      "total": {
+        "exVat": 662.38,
+        "incVat": 827.98
+      },
+      "type": "invoice"
+    }
+  ],
+  "page": 1,
+  "perPage": 25
+}

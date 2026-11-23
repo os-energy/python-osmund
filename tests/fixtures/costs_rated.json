@@ -1,0 +1,155 @@
+{
+  "complete": false,
+  "currency": "DKK",
+  "days": [
+    {
+      "components": [
+        {
+          "description": "Strøm",
+          "exVat": 13.0512,
+          "incVat": 16.314,
+          "type": "spot"
+        },
+        {
+          "description": "Transmissions nettarif",
+          "exVat": 0.5977,
+          "incVat": 0.7471,
+          "type": "tariff"
+        },
+        {
+          "description": "Systemtarif",
+          "exVat": 1.0008,
+          "incVat": 1.251,
+          "type": "tariff"
+        },
+        {
+          "description": "Nettarif C",
+          "exVat": 4.1592,
+          "incVat": 5.199,
+          "type": "tariff"
+        },
+        {
+          "description": "Elafgift",
+          "exVat": 0.1112,
+          "incVat": 0.139,
+          "type": "tax"
+        },
+        {
+          "description": "TSO - System Abonnement",
+          "exVat": 0.5194,
+          "incVat": 0.6493,
+          "type": "subscription"
+        },
+        {
+          "description": "Net abo C forbrug",
+          "exVat": 1.6583,
+          "incVat": 2.0729,
+          "type": "subscription"
+        },
+        {
+          "description": "Osmund Rolig 210 – 500 kWh",
+          "exVat": 0.9333,
+          "incVat": 1.1667,
+          "type": "subscription"
+        }
+      ],
+      "date": "2026-11-01",
+      "exVat": 18.92,
+      "incVat": 23.65,
+      "kwh": 13.9,
+      "subscriptions": {
+        "exVat": 3.11,
+        "incVat": 3.89
+      },
+      "totalWithSubscriptions": {
+        "exVat": 22.03,
+        "incVat": 27.54
+      }
+    },
+    {
+      "components": [
+        {
+          "description": "Strøm",
+          "exVat": 14.2944,
+          "incVat": 17.868,
+          "type": "spot"
+        },
+        {
+          "description": "Transmissions nettarif",
+          "exVat": 0.6536,
+          "incVat": 0.817,
+          "type": "tariff"
+        },
+        {
+          "description": "Systemtarif",
+          "exVat": 1.0944,
+          "incVat": 1.368,
+          "type": "tariff"
+        },
+        {
+          "description": "Nettarif C",
+          "exVat": 4.5448,
+          "incVat": 5.681,
+          "type": "tariff"
+        },
+        {
+          "description": "Elafgift",
+          "exVat": 0.1216,
+          "incVat": 0.152,
+          "type": "tax"
+        },
+        {
+          "description": "TSO - System Abonnement",
+          "exVat": 0.5194,
+          "incVat": 0.6493,
+          "type": "subscription"
+        },
+        {
+          "description": "Net abo C forbrug",
+          "exVat": 1.6583,
+          "incVat": 2.0729,
+          "type": "subscription"
+        },
+        {
+          "description": "Osmund Rolig 210 – 500 kWh",
+          "exVat": 0.9333,
+          "incVat": 1.1667,
+          "type": "subscription"
+        }
+      ],
+      "date": "2026-11-02",
+      "exVat": 20.71,
+      "incVat": 25.89,
+      "kwh": 15.2,
+      "subscriptions": {
+        "exVat": 3.11,
+        "incVat": 3.89
+      },
+      "totalWithSubscriptions": {
+        "exVat": 23.82,
+        "incVat": 29.78
+      }
+    }
+  ],
+  "daysInMonth": 30,
+  "daysWithData": 2,
+  "locationId": "0192f3a1-7c2e-7b1a-9d3e-2f6a8c1e4b10",
+  "missingDays": [
+    "2026-11-03"
+  ],
+  "month": "2026-11",
+  "subscriptions": {
+    "exVat": 6.22,
+    "incVat": 7.78
+  },
+  "subscriptionsComplete": true,
+  "total": {
+    "exVat": 39.63,
+    "incVat": 49.54
+  },
+  "totalKwh": 29.1,
+  "totalWithSubscriptions": {
+    "exVat": 45.85,
+    "incVat": 57.32
+  }
+}

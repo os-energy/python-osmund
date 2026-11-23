@@ -1,0 +1,70 @@
+{
+  "complete": true,
+  "currency": "DKK",
+  "date": "2026-11-17",
+  "intervals": [
+    {
+      "components": [
+        {
+          "description": "Spotpris",
+          "perKwh": 0.412,
+          "type": "spot"
+        },
+        {
+          "description": "Nettarif",
+          "perKwh": 0.287,
+          "type": "tariff"
+        },
+        {
+          "description": "Systemtarif",
+          "perKwh": 0.072,
+          "type": "tariff"
+        },
+        {
+          "description": "Elafgift",
+          "perKwh": 0.008,
+          "type": "tax"
+        }
+      ],
+      "end": "2026-11-17T01:00:00+01:00",
+      "spot": 0.412,
+      "start": "2026-11-17T00:00:00+01:00",
+      "totalExVat": 0.779,
+      "totalIncVat": 0.97375
+    },
+    {
+      "components": [
+        {
+          "description": "Spotpris",
+          "perKwh": 0.389,
+          "type": "spot"
+        },
+        {
+          "description": "Nettarif",
+          "perKwh": 0.287,
+          "type": "tariff"
+        },
+        {
+          "description": "Systemtarif",
+          "perKwh": 0.072,
+          "type": "tariff"
+        },
+        {
+          "description": "Elafgift",
+          "perKwh": 0.008,
+          "type": "tax"
+        }
+      ],
+      "end": "2026-11-17T02:00:00+01:00",
+      "spot": 0.389,
+      "start": "2026-11-17T01:00:00+01:00",
+      "totalExVat": 0.756,
+      "totalIncVat": 0.945
+    }
+  ],
+  "locationId": "0192f3a1-7c2e-7b1a-9d3e-2f6a8c1e4b10",
+  "priceArea": "DK1",
+  "reason": null,
+  "resolution": "PT1H",
+  "unit": "kr/kWh"
+}
